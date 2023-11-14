@@ -1,0 +1,57 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+#define PA_LEVEL RF24_PA_MIN    // Potencia mínima (recomendado si es solo receptor)
+//#define PA_LEVEL RF24_PA_LOW    // Potencia baja
+//#define PA_LEVEL RF24_PA_HIGH   // Potencia alta
+//#define PA_LEVEL RF24_PA_MAX    // Potencia máxima (requiere adaptador con regulador)
+
+#define DATA_RATE RF24_1MBPS    // Por defecto en ambos módulos
+//#define DATA_RATE RF24_250KBPS  // Transmisión lenta pero mayor rango
+//#define DATA_RATE RF24_2MBPS    // Transmisión rapida pero menor rango
+
+#define CHANNEL 76  // Cambiar canal si hay problemas de interferencia (Debe coincidir con emisor)
+
+#define LED 2   // PIN donde tienes conectado el LED
+
+RF24 radio(9, 8); // Instancia de Radio NRF24L01 PIN 9 = CE, PIN 8 = CSN
+
+bool STATE = false; // Variable boleana que recibe el estado del push del emisor
+
+const byte address[6] = "00001"; // Dirección de lectura (Debe coincidir con emisor)
+
+void setup()
+{
+  pinMode(LED, OUTPUT);     // PIN de LED como salida digital
+  digitalWrite(LED, STATE); //  Apagar LED
+  
+  while (!Serial);      //  Inicializar puerto serial y esperar a que se estabilice
+    Serial.begin(9600); //  a 9600 baudios
+  
+  radio.begin();        // Iniciar Radio NRF24L01
+  radio.openReadingPipe(0, address);    // Abrir un canal de lectura en direccion establecida
+  
+  radio.setDataRate(DATA_RATE); //  Configurar radio para usar DATA_RATE definido por usuario
+  radio.setPALevel(PA_LEVEL);   //  Configurar radio para usar PA_LEVEL definido por usuario
+  radio.setChannel(CHANNEL);    //  Configurar radio para usar CHANNEL definido por usuario
+
+  //    Obtener datos de configuración por puerto serial (para propósitos de debugging)
+  Serial.println(radio.getDataRate());
+  Serial.println(radio.getPALevel());
+  Serial.println(radio.getChannel());
+
+  radio.startListening();   // Configurar radio como Receptor (sólo escuchar)
+  
+  delay(1000);
+}
+
+void loop()
+{
+  if (radio.available())       // Si hay datos disponibles
+  {
+    radio.read(&STATE, sizeof(STATE));  // Leer datos y asignarlos a la variable STATE
+    digitalWrite(LED, STATE);           // Estado del LED en base a datos recibidos
+  }
+}
